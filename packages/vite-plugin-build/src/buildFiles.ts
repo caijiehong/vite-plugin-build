@@ -1,6 +1,6 @@
 import path from 'path';
 import type { BuildOptions, InlineConfig, Plugin, UserConfig } from 'vite';
-import { build } from 'vite';
+import { build, mergeConfig } from 'vite';
 import type { ExternalOption, OutputOptions } from 'rollup';
 import fg from 'fast-glob';
 import runInTaskPool from 'run-in-task-pool';
@@ -95,20 +95,8 @@ export async function transformFile(fileRelativePath: string, options: BuildFile
       return acc;
     }, {});
 
-    return {
-      ...viteConfig,
-      plugins: [
-        {
-          name: 'vite:build-file-transform',
-          enforce: 'pre',
-          ...lastPluginHooks,
-        },
-        ...(viteConfig?.plugins ? viteConfig.plugins : []),
-      ],
-      mode: 'production',
-      configFile: false,
-      logLevel: 'error',
-      build: {
+    const buildConfig = mergeConfig(
+      {
         assetsDir: './',
         cssCodeSplit: true,
         emptyOutDir: false,
@@ -133,9 +121,25 @@ export async function transformFile(fileRelativePath: string, options: BuildFile
           name: 'noop', // 这里设置只有在 UMD 格式才有效，避免验证报错才设置的，在这里没用
         },
         minify: false,
-        ...lastBuildOptions,
         watch,
       },
+      lastBuildOptions,
+    );
+
+    return {
+      ...viteConfig,
+      plugins: [
+        {
+          name: 'vite:build-file-transform',
+          enforce: 'pre',
+          ...lastPluginHooks,
+        },
+        ...(viteConfig?.plugins ? viteConfig.plugins : []),
+      ],
+      mode: 'production',
+      configFile: false,
+      logLevel: 'error',
+      build: buildConfig,
     };
   }
 
